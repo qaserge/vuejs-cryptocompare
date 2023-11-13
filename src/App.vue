@@ -99,6 +99,8 @@
           <div
             v-for="t in tickers"
             :key="t.name"
+            @click="sel = t"
+            :class="{ 'border-4': sel === t }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -111,7 +113,7 @@
             </div>
             <div class="w-full border-t border-gray-200"></div>
             <button
-              @click="handleDelete(t)"
+              @click.stop="handleDelete(t)"
               class="flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
             >
               <svg
@@ -131,9 +133,9 @@
           </div>
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
-        <section class="relative">
+        <section v-if="sel" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-            VUE - USD
+            {{ sel.name }} - USD
           </h3>
           <div class="flex items-end border-gray-600 border-b border-l h-64">
             <div class="bg-purple-800 border w-10 h-24"></div>
@@ -141,7 +143,11 @@
             <div class="bg-purple-800 border w-10 h-48"></div>
             <div class="bg-purple-800 border w-10 h-16"></div>
           </div>
-          <button type="button" class="absolute top-0 right-0">
+          <button
+            @click="sel = null"
+            type="button"
+            class="absolute top-0 right-0"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -178,20 +184,8 @@ export default {
   data() {
     return {
       ticker: null,
-      tickers: [
-        {
-          name: "test1",
-          price: 111,
-        },
-        {
-          name: "test2",
-          price: 222,
-        },
-        {
-          name: "test3",
-          price: 333,
-        },
-      ],
+      sel: null,
+      tickers: [],
     };
   },
 
@@ -203,6 +197,16 @@ export default {
       };
 
       this.tickers.push(newTicker);
+
+      setInterval(async () => {
+        const f = await fetch(
+          `https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=f9d31f94d0950ba8cffb4e3041b5cc4a1c6bed06f017c1730fade13d38863bb5`
+        );
+        const data = await f.json();
+        console.log(data);
+        this.tickers.find((t) => t.name === newTicker.name).price = data.USD;
+      }, 5000);
+
       this.ticker = "";
     },
 
