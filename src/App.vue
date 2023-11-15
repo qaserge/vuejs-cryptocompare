@@ -212,7 +212,7 @@ export default {
         if (this.sel?.name === currentTicker.name) {
           this.graph.push(data.USD);
         }
-      }, 5000);
+      }, 300000);
 
       this.ticker = "";
     },
@@ -236,5 +236,3 @@ export default {
   },
 };
 </script>
-
-<style src="./app.css"></style>
