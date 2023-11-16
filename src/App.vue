@@ -209,6 +209,10 @@ export default {
 
   created() {
     this.getAllCryptocompare();
+    const tickersData = localStorage.getItem("crypto-list");
+    if (tickersData) {
+      this.tickers = JSON.parse(tickersData);
+    }
   },
 
   watch: {
@@ -251,6 +255,9 @@ export default {
 
       this.tickers.push(currentTicker);
 
+      localStorage.setItem("crypto-list", JSON.stringify(this.tickers));
+
+      //get prices from API
       setInterval(async () => {
         const f = await fetch(
           `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=f9d31f94d0950ba8cffb4e3041b5cc4a1c6bed06f017c1730fade13d38863bb5`
@@ -276,6 +283,7 @@ export default {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
     },
 
+    //set graph hight
     normilizeGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
@@ -284,6 +292,7 @@ export default {
       );
     },
 
+    //get all coins
     async getAllCryptocompare() {
       try {
         const response = await fetch(
