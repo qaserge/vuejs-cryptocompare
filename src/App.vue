@@ -1,29 +1,31 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
-    <!-- <div
-      class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
-    >
-      <svg
-        class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
+    <template v-if="loading">
+      <div
+        class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
       >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        ></path>
-      </svg>
-    </div> -->
+        <svg
+          class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+    </template>
     <div class="container">
       <section>
         <div class="flex">
@@ -34,7 +36,7 @@
             <div class="mt-1 relative rounded-md shadow-md">
               <input
                 v-model="ticker"
-                @keydown.enter="add"
+                @keydown.enter="add(ticker)"
                 type="text"
                 name="wallet"
                 id="wallet"
@@ -42,37 +44,27 @@
                 placeholder="Example DOGE"
               />
             </div>
+
             <div
+              v-if="searchInCoinlist.length > 0"
               class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
             >
               <span
+                v-for="result in searchInCoinlist.slice(0, 20)"
+                :key="result.Id"
+                @click="add(result.Symbol)"
                 class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
               >
-                BTC
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                DOGE
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                BCH
-              </span>
-              <span
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                CHD
+                {{ result.Symbol }}
               </span>
             </div>
-            <div class="text-sm text-red-600">
+            <div v-if="tickerExistInTickers" class="text-sm text-red-600">
               This ticker has already been added
             </div>
           </div>
         </div>
         <button
-          @click="add"
+          @click="add(ticker)"
           type="button"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
@@ -186,18 +178,76 @@ export default {
   data() {
     return {
       ticker: null,
-      sel: null,
       tickers: [],
+      sel: null,
       graph: [],
+      loading: true,
+      coinlist: null,
+      tickerExistInTickers: false,
     };
   },
 
+  // an object that contains computed properties. Computed properties in Vue.js are dependencies based on data in the Vue instance that will automatically update when the dependencies change.
+  computed: {
+    searchInCoinlist() {
+      if (!this.coinlist || !this.coinlist.Data || !this.ticker) {
+        return [];
+      }
+      const searchTerm = this.ticker.toLowerCase();
+
+      return Object.values(this.coinlist.Data).filter((coin) => {
+        return (
+          coin &&
+          coin.Symbol &&
+          coin.Symbol.toLowerCase().includes(searchTerm) &&
+          coin.FullName &&
+          coin.FullName.toLowerCase().includes(searchTerm)
+        );
+      });
+    },
+  },
+
+  created() {
+    this.getAllCryptocompare();
+  },
+
+  watch: {
+    // this will make it possible to display the message for only 1 second
+    tickerExistInTickers(newVal) {
+      if (newVal) {
+        setTimeout(() => {
+          this.tickerExistInTickers = false;
+        }, 1000);
+      }
+    },
+  },
+
   methods: {
-    add() {
+    add(ticker) {
       const currentTicker = {
-        name: this.ticker,
+        name: ticker.toUpperCase(),
         price: "-",
       };
+
+      function countDuplicatesInProxy(proxy, property, targetName) {
+        let count = 1;
+
+        for (const item of proxy) {
+          const value = item[property];
+          if (value === targetName) {
+            count++;
+          }
+        }
+
+        return count;
+      }
+
+      if (
+        countDuplicatesInProxy(this.tickers, "name", ticker.toUpperCase()) > 1
+      ) {
+        this.tickerExistInTickers = true;
+        return false;
+      }
 
       this.tickers.push(currentTicker);
 
@@ -232,6 +282,20 @@ export default {
       return this.graph.map(
         (price) => ((price - minValue) * 100) / (maxValue - minValue)
       );
+    },
+
+    async getAllCryptocompare() {
+      try {
+        const response = await fetch(
+          `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
+        );
+        const data = await response.json();
+        this.coinlist = data;
+        console.log(data);
+        this.loading = false; // remove spinner
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
     },
   },
 };
