@@ -86,10 +86,27 @@
       </section>
 
       <template v-if="tickers.length">
+        <div>
+          Filter: <input v-model="filter" type="text" />
+          <button
+            v-if="page > 1"
+            @click="page = page - 1"
+            class="my-4 ml-8 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Back
+          </button>
+          <button
+            v-if="hasNextPage"
+            @click="page = page + 1"
+            class="my-4 ml-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Next
+          </button>
+        </div>
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="t in tickers"
+            v-for="t in filteredTickers()"
             :key="t.name"
             @click="select(t)"
             :class="{ 'border-4': sel === t }"
@@ -184,6 +201,9 @@ export default {
       loading: true,
       coinlist: null,
       tickerExistInTickers: false,
+      page: 1,
+      filter: "",
+      hasNextPage: true,
     };
   },
 
@@ -215,9 +235,9 @@ export default {
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
       //set prices for the tickers from localStorage
-      this.tickers.forEach(ticker => {
+      this.tickers.forEach((ticker) => {
         this.subscribeToUpdates(ticker.name);
-      })
+      });
     }
   },
 
@@ -230,9 +250,27 @@ export default {
         }, 1000);
       }
     },
+
+    // set page 1, then using the filter
+    filter() {
+      this.page = 1;
+    }
   },
 
   methods: {
+    filteredTickers() {
+      const start = (this.page - 1) * 6;
+      const end = this.page * 6;
+
+      const filteredTickers = this.tickers.filter((ticker) =>
+        ticker.name.includes(this.filter.toUpperCase())
+      );
+
+      this.hasNextPage = filteredTickers.length > end;
+
+      return filteredTickers.slice(start, end);
+    },
+
     subscribeToUpdates(tickerName) {
       //get prices from API
       setInterval(async () => {
@@ -240,8 +278,7 @@ export default {
           `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=f9d31f94d0950ba8cffb4e3041b5cc4a1c6bed06f017c1730fade13d38863bb5`
         );
         const data = await f.json();
-        this.tickers.find((t) => t.name === tickerName).price =
-          data.USD;
+        this.tickers.find((t) => t.name === tickerName).price = data.USD;
 
         if (this.sel?.name === tickerName) {
           this.graph.push(data.USD);
@@ -281,7 +318,8 @@ export default {
 
       localStorage.setItem("crypto-list", JSON.stringify(this.tickers));
 
-      this.subscribeToUpdates(currentTicker.name);      
+      this.subscribeToUpdates(currentTicker.name);
+      this.filter = "";
     },
 
     select(ticker) {
@@ -310,7 +348,6 @@ export default {
         );
         const data = await response.json();
         this.coinlist = data;
-        console.log(data);
         this.loading = false; // remove spinner
       } catch (error) {
         console.error("Error fetching data:", error);
