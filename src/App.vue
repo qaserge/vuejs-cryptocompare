@@ -230,6 +230,18 @@ export default {
   created() {
     this.getAllCryptocompare();
 
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
+    );
+
+    if (windowData.filter) {
+      this.filter = windowData.filter;
+    }
+
+    if (windowData.page) {
+      this.page = windowData.page;
+    }
+
     //get tickers from localStorage
     const tickersData = localStorage.getItem("crypto-list");
     if (tickersData) {
@@ -251,10 +263,23 @@ export default {
       }
     },
 
-    // set page 1, then using the filter
     filter() {
-      this.page = 1;
-    }
+      this.page = 1; // set page 1, then using the filter
+      // browser session history. history.pushState(state, title, url);
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    },
+
+    page() {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    },
   },
 
   methods: {
