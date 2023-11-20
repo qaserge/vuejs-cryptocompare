@@ -106,7 +106,7 @@
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="t in filteredTickers()"
+            v-for="t in paginatedTickers"
             :key="t.name"
             @click="select(t)"
             :class="{ 'border-4': sel === t }"
@@ -148,7 +148,7 @@
           </h3>
           <div class="flex items-end border-gray-600 border-b border-l h-64">
             <div
-              v-for="(bar, idx) in normilizeGraph()"
+              v-for="(bar, idx) in normilizedGraph"
               :key="idx"
               :style="{ height: `${bar}%` }"
               class="bg-purple-800 border w-10"
@@ -203,11 +203,12 @@ export default {
       tickerExistInTickers: false,
       page: 1,
       filter: "",
-      hasNextPage: true,
     };
   },
 
-  // an object that contains computed properties. Computed properties in Vue.js are dependencies based on data in the Vue instance that will automatically update when the dependencies change.
+  // an object that contains computed properties.
+  // Computed properties in Vue.js are dependencies based on data in the Vue instance
+  // that will automatically update when the dependencies change.
   computed: {
     searchInCoinlist() {
       if (!this.coinlist || !this.coinlist.Data || !this.ticker) {
@@ -224,6 +225,37 @@ export default {
           coin.FullName.toLowerCase().includes(searchTerm)
         );
       });
+    },
+
+    startIndex() {
+      return (this.page - 1) * 6;
+    },
+
+    endIndex() {
+      return this.page * 6;
+    },
+
+    filteredTickers() {
+      return this.tickers.filter((ticker) =>
+        ticker.name.includes(this.filter.toUpperCase())
+      );
+    },
+
+    paginatedTickers() {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex);
+    },
+
+    hasNextPage() {
+      return this.filteredTickers.length > this.endIndex;
+    },
+
+    //set graph hight
+    normilizedGraph() {
+      const maxValue = Math.max(...this.graph);
+      const minValue = Math.min(...this.graph);
+      return this.graph.map(
+        (price) => ((price - minValue) * 100) / (maxValue - minValue)
+      );
     },
   },
 
@@ -283,19 +315,6 @@ export default {
   },
 
   methods: {
-    filteredTickers() {
-      const start = (this.page - 1) * 6;
-      const end = this.page * 6;
-
-      const filteredTickers = this.tickers.filter((ticker) =>
-        ticker.name.includes(this.filter.toUpperCase())
-      );
-
-      this.hasNextPage = filteredTickers.length > end;
-
-      return filteredTickers.slice(start, end);
-    },
-
     subscribeToUpdates(tickerName) {
       //get prices from API
       setInterval(async () => {
@@ -308,7 +327,7 @@ export default {
         if (this.sel?.name === tickerName) {
           this.graph.push(data.USD);
         }
-      }, 300000);
+      }, 3000000);
 
       this.ticker = "";
     },
@@ -354,15 +373,6 @@ export default {
 
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
-    },
-
-    //set graph hight
-    normilizeGraph() {
-      const maxValue = Math.max(...this.graph);
-      const minValue = Math.min(...this.graph);
-      return this.graph.map(
-        (price) => ((price - minValue) * 100) / (maxValue - minValue)
-      );
     },
 
     //get all coins
