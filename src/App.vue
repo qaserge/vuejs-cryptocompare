@@ -1,32 +1,7 @@
 <template>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
-    <template v-if="loading">
-      <div
-        class="fixed w-100 h-100 opacity-80 bg-purple-800 inset-0 z-50 flex items-center justify-center"
-      >
-        <svg
-          class="animate-spin -ml-1 mr-3 h-12 w-12 text-white"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-      </div>
-    </template>
     <div class="container">
+      <div class="w-full my-4"></div>
       <section>
         <div class="flex">
           <div class="max-w-xs">
@@ -36,7 +11,7 @@
             <div class="mt-1 relative rounded-md shadow-md">
               <input
                 v-model="ticker"
-                @keydown.enter="add(ticker)"
+                @keydown.enter="add"
                 type="text"
                 name="wallet"
                 id="wallet"
@@ -44,27 +19,10 @@
                 placeholder="Example DOGE"
               />
             </div>
-
-            <div
-              v-if="searchInCoinlist.length > 0"
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
-            >
-              <span
-                v-for="result in searchInCoinlist.slice(0, 20)"
-                :key="result.Id"
-                @click="add(result.Symbol)"
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                {{ result.Symbol }}
-              </span>
-            </div>
-            <div v-if="tickerExistInTickers" class="text-sm text-red-600">
-              This ticker has already been added
-            </div>
           </div>
         </div>
         <button
-          @click="add(ticker)"
+          @click="add"
           type="button"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
@@ -86,22 +44,23 @@
       </section>
 
       <template v-if="tickers.length">
+        <hr class="w-full border-t border-gray-600 my-4" />
         <div>
-          Filter: <input v-model="filter" type="text" />
           <button
+            class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             v-if="page > 1"
             @click="page = page - 1"
-            class="my-4 ml-8 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
             Back
           </button>
           <button
-            v-if="hasNextPage"
+            class="my-4 mx-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             @click="page = page + 1"
-            class="my-4 ml-2 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            v-if="hasNextPage"
           >
             Next
           </button>
+          <div><input v-model="filter" /></div>
         </div>
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -109,15 +68,17 @@
             v-for="t in paginatedTickers"
             :key="t.name"
             @click="select(t)"
-            :class="{ 'border-4': selectedTicker === t }"
+            :class="{
+              'border-4': selectedTicker === t,
+            }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
-                {{ t.name }}
+                {{ t.name }} - USD
               </dt>
               <dd class="mt-1 text-3xl font-semibold text-gray-900">
-                {{ t.price }}
+                {{ formatPrice(t.price) }}
               </dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
@@ -142,91 +103,99 @@
           </div>
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
-        <section v-if="selectedTicker" class="relative">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-            {{ selectedTicker.name }} - USD
-          </h3>
-          <div class="flex items-end border-gray-600 border-b border-l h-64">
-            <div
-              v-for="(bar, idx) in normilizedGraph"
-              :key="idx"
-              :style="{ height: `${bar}%` }"
-              class="bg-purple-800 border w-10"
-            ></div>
-          </div>
-          <button
-            @click="selectedTicker = null"
-            type="button"
-            class="absolute top-0 right-0"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              xmlns:xlink="http://www.w3.org/1999/xlink"
-              xmlns:svgjs="http://svgjs.com/svgjs"
-              version="1.1"
-              width="30"
-              height="30"
-              x="0"
-              y="0"
-              viewBox="0 0 511.76 511.76"
-              style="enable-background: new 0 0 512 512"
-              xml:space="preserve"
-            >
-              <g>
-                <path
-                  d="M436.896,74.869c-99.84-99.819-262.208-99.819-362.048,0c-99.797,99.819-99.797,262.229,0,362.048    c49.92,49.899,115.477,74.837,181.035,74.837s131.093-24.939,181.013-74.837C536.715,337.099,536.715,174.688,436.896,74.869z     M361.461,331.317c8.341,8.341,8.341,21.824,0,30.165c-4.16,4.16-9.621,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    l-75.413-75.435l-75.392,75.413c-4.181,4.16-9.643,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    c-8.341-8.341-8.341-21.845,0-30.165l75.392-75.413l-75.413-75.413c-8.341-8.341-8.341-21.845,0-30.165    c8.32-8.341,21.824-8.341,30.165,0l75.413,75.413l75.413-75.413c8.341-8.341,21.824-8.341,30.165,0    c8.341,8.32,8.341,21.824,0,30.165l-75.413,75.413L361.461,331.317z"
-                  fill="#718096"
-                  data-original="#000000"
-                ></path>
-              </g>
-            </svg>
-          </button>
-        </section>
       </template>
+      <section v-if="selectedTicker" class="relative">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
+          {{ selectedTicker.name }} - USD
+        </h3>
+        <div class="flex items-end border-gray-600 border-b border-l h-64">
+          <div
+            v-for="(bar, idx) in normalizedGraph"
+            :key="idx"
+            :style="{ height: `${bar}%` }"
+            class="bg-purple-800 border w-10"
+          ></div>
+        </div>
+        <button
+          @click="selectedTicker = null"
+          type="button"
+          class="absolute top-0 right-0"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xmlns:svgjs="http://svgjs.com/svgjs"
+            version="1.1"
+            width="30"
+            height="30"
+            x="0"
+            y="0"
+            viewBox="0 0 511.76 511.76"
+            style="enable-background: new 0 0 512 512"
+            xml:space="preserve"
+          >
+            <g>
+              <path
+                d="M436.896,74.869c-99.84-99.819-262.208-99.819-362.048,0c-99.797,99.819-99.797,262.229,0,362.048    c49.92,49.899,115.477,74.837,181.035,74.837s131.093-24.939,181.013-74.837C536.715,337.099,536.715,174.688,436.896,74.869z     M361.461,331.317c8.341,8.341,8.341,21.824,0,30.165c-4.16,4.16-9.621,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    l-75.413-75.435l-75.392,75.413c-4.181,4.16-9.643,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    c-8.341-8.341-8.341-21.845,0-30.165l75.392-75.413l-75.413-75.413c-8.341-8.341-8.341-21.845,0-30.165    c8.32-8.341,21.824-8.341,30.165,0l75.413,75.413l75.413-75.413c8.341-8.341,21.824-8.341,30.165,0    c8.341,8.32,8.341,21.824,0,30.165l-75.413,75.413L361.461,331.317z"
+                fill="#718096"
+                data-original="#000000"
+              ></path>
+            </g>
+          </svg>
+        </button>
+      </section>
     </div>
   </div>
 </template>
 
 <script>
+import { subscribeToTicker, unsubscribeFromTicker } from "./api";
+
 export default {
   name: "App",
 
-  // data that changes over time
   data() {
     return {
-      ticker: null,
+      ticker: "",
+      filter: "",
+
       tickers: [],
       selectedTicker: null,
+
       graph: [],
-      loading: true,
-      coinlist: null,
-      tickerExistInTickers: false,
+
       page: 1,
-      filter: "",
     };
   },
 
-  // an object that contains computed properties.
-  // Computed properties in Vue.js are dependencies based on data in the Vue instance
-  // that will automatically update when the dependencies change.
-  computed: {
-    searchInCoinlist() {
-      if (!this.coinlist || !this.coinlist.Data || !this.ticker) {
-        return [];
-      }
-      const searchTerm = this.ticker.toLowerCase();
+  created() {
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
+    );
 
-      return Object.values(this.coinlist.Data).filter((coin) => {
-        return (
-          coin &&
-          coin.Symbol &&
-          coin.Symbol.toLowerCase().includes(searchTerm) &&
-          coin.FullName &&
-          coin.FullName.toLowerCase().includes(searchTerm)
+    const VALID_KEYS = ["filter", "page"];
+
+    VALID_KEYS.forEach((key) => {
+      if (windowData[key]) {
+        this[key] = windowData[key];
+      }
+    });
+
+    const tickersData = localStorage.getItem("cryptonomicon-list");
+
+    if (tickersData) {
+      this.tickers = JSON.parse(tickersData);
+      this.tickers.forEach((ticker) => {
+        subscribeToTicker(ticker.name, (newPrice) =>
+          this.updateTicker(ticker.name, newPrice)
         );
       });
-    },
+    }
 
+    setInterval(this.updateTickers, 5000);
+  },
+
+  computed: {
     startIndex() {
       return (this.page - 1) * 6;
     },
@@ -236,9 +205,7 @@ export default {
     },
 
     filteredTickers() {
-      return this.tickers.filter((ticker) =>
-        ticker.name.includes(this.filter.toUpperCase())
-      );
+      return this.tickers.filter((ticker) => ticker.name.includes(this.filter));
     },
 
     paginatedTickers() {
@@ -249,8 +216,7 @@ export default {
       return this.filteredTickers.length > this.endIndex;
     },
 
-    //set graph hight
-    normilizedGraph() {
+    normalizedGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
 
@@ -271,120 +237,41 @@ export default {
     },
   },
 
-  created() {
-    this.getAllCryptocompare();
-
-    const windowData = Object.fromEntries(
-      new URL(window.location).searchParams.entries()
-    );
-
-    if (windowData.filter) {
-      this.filter = windowData.filter;
-    }
-
-    if (windowData.page) {
-      this.page = windowData.page;
-    }
-
-    //get tickers from localStorage
-    const tickersData = localStorage.getItem("crypto-list");
-    if (tickersData) {
-      this.tickers = JSON.parse(tickersData);
-      //set prices for the tickers from localStorage
-      this.tickers.forEach((ticker) => {
-        this.subscribeToUpdates(ticker.name);
-      });
-    }
-  },
-
-  watch: {
-    // this will make it possible to display the message for only 1 second
-    tickerExistInTickers(newVal) {
-      if (newVal) {
-        setTimeout(() => {
-          this.tickerExistInTickers = false;
-        }, 1000);
-      }
-    },
-
-    filter() {
-      this.page = 1; // set page 1, then using the filter
-    },
-
-    pageStateOptions(value) {
-      // browser session history. history.pushState(state, title, url);
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
-      );
-    },
-
-    // decrease page number in case if alll tickers deleted on the page
-    paginatedTickers() {
-      if (this.paginatedTickers.length === 0 && this.page > 1) {
-        this.page -= 1;
-      }
-    },
-
-    selectedTicker() {
-      this.graph = [];
-    },
-  },
-
   methods: {
-    subscribeToUpdates(tickerName) {
-      //get prices from API
-      setInterval(async () => {
-        const f = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=f9d31f94d0950ba8cffb4e3041b5cc4a1c6bed06f017c1730fade13d38863bb5`
-        );
-        const data = await f.json();
-        this.tickers.find((t) => t.name === tickerName).price = data.USD;
-
-        if (this.selectedTicker?.name === tickerName) {
-          this.graph.push(data.USD);
-        }
-      }, 3000000);
-
-      this.ticker = "";
+    updateTicker(tickerName, price) {
+      this.tickers
+        .filter((t) => t.name === tickerName)
+        .forEach((t) => {
+          if (t === this.selectedTicker) {
+            this.graph.push(price);
+          }
+          t.price = price;
+        });
     },
 
-    add(ticker) {
+    formatPrice(price) {
+      if (price === "-") {
+        return price;
+      }
+      return price > 1 ? price.toFixed(2) : price.toPrecision(2);
+    },
+
+    add() {
       const currentTicker = {
-        name: ticker.toUpperCase(),
+        name: this.ticker,
         price: "-",
       };
 
-      function countDuplicatesInProxy(proxy, property, targetName) {
-        let count = 1;
-
-        for (const item of proxy) {
-          const value = item[property];
-          if (value === targetName) {
-            count++;
-          }
-        }
-
-        return count;
-      }
-
-      if (
-        countDuplicatesInProxy(this.tickers, "name", ticker.toUpperCase()) > 1
-      ) {
-        this.tickerExistInTickers = true;
-        return false;
-      }
-
-      this.tickers.push(currentTicker);
-
-      localStorage.setItem("crypto-list", JSON.stringify(this.tickers));
-
-      this.subscribeToUpdates(currentTicker.name);
+      this.tickers = [...this.tickers, currentTicker];
+      this.ticker = "";
       this.filter = "";
+      subscribeToTicker(currentTicker.name, (newPrice) =>
+        this.updateTicker(currentTicker.name, newPrice)
+      );
     },
 
     select(ticker) {
+      console.log(ticker);
       this.selectedTicker = ticker;
     },
 
@@ -393,20 +280,37 @@ export default {
       if (this.selectedTicker === tickerToRemove) {
         this.selectedTicker = null;
       }
+      unsubscribeFromTicker(tickerToRemove.name);
+    },
+  },
+
+  watch: {
+    selectedTicker() {
+      this.graph = [];
     },
 
-    //get all coins
-    async getAllCryptocompare() {
-      try {
-        const response = await fetch(
-          `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
-        );
-        const data = await response.json();
-        this.coinlist = data;
-        this.loading = false; // remove spinner
-      } catch (error) {
-        console.error("Error fetching data:", error);
+    tickers(newValue, oldValue) {
+      // Почему не сработал watch при добавлении?
+      console.log(newValue === oldValue);
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+    },
+
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
       }
+    },
+
+    filter() {
+      this.page = 1;
+    },
+
+    pageStateOptions(value) {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
+      );
     },
   },
 };
