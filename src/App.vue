@@ -309,6 +309,8 @@ export default {
   watch: {
     selectedTicker() {
       this.graph = [];
+      this.$nextTick() //code after Vue has finished updating the DOM
+        .then(this.calculateMaxGraphElements);
     },
 
     tickers() {
